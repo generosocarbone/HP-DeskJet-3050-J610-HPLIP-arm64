@@ -93,6 +93,63 @@ Il database HP identifica la J610 come `scan-type=7` (LEDM), senza plugin binari
 
 Come alternativa già distribuita, il produttore di [VueScan dichiara supporto specifico per la J610 su macOS via USB](https://www.hamrick.com/vuescan/hp_deskjet_3050_j610.html). Questa indicazione non costituisce una prova sul dispositivo dell'utente.
 
+## Configurazione Wi-Fi tramite USB
+
+La J610 dichiara `wifi-config=3` nel database HP: supporta l'invio del profilo Wi-Fi tramite LEDM su USB, senza usare il display o i pulsanti della stampante. Lo script riproduce la sequenza di `vendor/hplip-3.26.6/base/LedmWifi.py`.
+
+Lasciare la stampante accesa e collegata via USB. Nel **Terminale del Mac**, senza `sudo`:
+
+```sh
+python3 /Users/generosocarbone/dev/driver/scripts/configure-wifi.py
+```
+
+Lo script accende la radio se necessario, elenca le reti visibili, chiede il numero della rete e la password nascosta, invia il profilo alla stampante e attende fino a due minuti per l'associazione e l'indirizzo IPv4. La password non viene accettata come argomento, stampata o salvata in file sul Mac; la stampante la memorizza nel proprio profilo per riconnettersi.
+
+Per preselezionare una rete visibile:
+
+```sh
+python3 scripts/configure-wifi.py --ssid "Nome della rete"
+```
+
+Comandi senza modifica della configurazione:
+
+```sh
+python3 scripts/configure-wifi.py --status   # radio, associazione, SSID e IP
+python3 scripts/configure-wifi.py --list     # reti rilevate; radio già accesa
+python3 scripts/configure-wifi.py --dry-run  # piano offline, nessun accesso USB
+```
+
+Supporto attuale: reti visibili a 2,4 GHz, WPA/WPA2 personali con passphrase ASCII di 8–63 caratteri, oppure reti aperte. Non implementa WEP, reti nascoste, autenticazione aziendale o WPA3 esclusivo. Conserva i valori di sicurezza segnalati dalla stampante (sul modello provato: `WPA_PSK`).
+
+**Verifiche eseguite:** lettura reale di radio e stato associazione; ricerca reale delle reti tramite USB; 21 test automatici del payload, della gestione HTTP e degli errori. L'utente ha poi eseguito lo script interattivo: profilo accettato, associazione riuscita e indirizzo `192.168.1.106`. Il Mac raggiunge la stampante sulla rete; modello e numero di serie letti dal dispositivo coincidono con la J610 USB.
+
+Il firmware della J610 risponde HTTP 405 a `GET /IoMgmt/Adapters/Wifi0`; lo stato viene quindi letto da `/IoMgmt/Adapters`, incluso `IsConnected`. Un profilo accettato o un vecchio IP, da soli, non sono considerati un collegamento riuscito. Le scritture dall'esito incerto non vengono ritentate automaticamente.
+
+Lo script di configurazione Wi-Fi non crea automaticamente una coda di stampa di rete sul Mac. Su questo Mac la coda è stata successivamente aggiunta come descritto sotto. Il programma scanner attuale continua a usare USB.
+
+Per ricompilare il componente locale e ripetere i test:
+
+```sh
+bash scripts/build-wifi.sh
+python3 -m unittest discover -s tests -v
+```
+
+Il componente usa `libusb` già presente e percorsi verso il database HPLIP nel progetto: dopo uno spostamento della cartella occorre ricompilare. Non richiede installazioni di sistema. Una correzione a un messaggio d'errore USB di HPLIP viene applicata soltanto alla copia di compilazione, lasciando intatti i sorgenti originali.
+
+## Stampa via Wi-Fi
+
+Nelle applicazioni scegliere **HP DeskJet 3050 J610 — Wi-Fi**. La coda CUPS è `HP_Deskjet_3050_J610_WiFi`, indirizzata a `socket://192.168.1.106:9100`, con lo stesso driver HPLIP arm64 già collaudato via USB. Impostazioni predefinite: A4 e `KGray` (cartuccia nera); la coda non è condivisa e non è stata impostata come stampante predefinita. Le code USB restano disponibili.
+
+**Prova hardware riuscita:** il lavoro 18 risulta completato in CUPS e l'utente ha confermato che la pagina è uscita correttamente. La destinazione `socket://` usa effettivamente la rete anche quando il cavo USB è ancora collegato.
+
+L'indirizzo è assegnato dal router e potrebbe cambiare. In tal caso riservare `192.168.1.106` alla stampante nelle impostazioni DHCP del router oppure aggiornare la coda con il nuovo IP verificato:
+
+```sh
+lpadmin -p HP_Deskjet_3050_J610_WiFi -v socket://NUOVO_IP:9100
+```
+
+Il comando può richiedere privilegi amministrativi su altri Mac. Questa configurazione riguarda la stampa: per il nostro comando di scansione serve ancora il cavo USB.
+
 ## Sorgenti e provenienza
 
 Il codice HP originale è conservato in `vendor/hplip-3.26.6`; la compilazione lavora su copie. Fonte: [download HPLIP ufficiale](https://developers.hp.com/hp-linux-imaging-and-printing/gethplip), archivio `https://downloads.sourceforge.net/project/hplip/hplip/3.26.6/hplip-3.26.6.tar.gz`.

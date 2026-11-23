@@ -6,3 +6,5 @@ dist-scanner/
 .DS_Store
 __pycache__/
 scans/
+build-wifi/
+dist-wifi/
