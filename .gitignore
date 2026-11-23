@@ -1,0 +1,8 @@
+vendor/
+build/
+dist/
+build-scanner/
+dist-scanner/
+.DS_Store
+__pycache__/
+scans/
