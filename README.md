@@ -103,13 +103,53 @@ Lasciare la stampante accesa e collegata via USB. Nel **Terminale del Mac**, sen
 python3 /Users/generosocarbone/dev/driver/scripts/configure-wifi.py
 ```
 
-Lo script accende la radio se necessario, elenca le reti visibili, chiede il numero della rete e la password nascosta, invia il profilo alla stampante e attende fino a due minuti per l'associazione e l'indirizzo IPv4. La password non viene accettata come argomento, stampata o salvata in file sul Mac; la stampante la memorizza nel proprio profilo per riconnettersi.
+In modalità interattiva lo script accende la radio se necessario, elenca le reti visibili, chiede il numero della rete e la password nascosta, invia il profilo alla stampante e attende fino a due minuti per l'associazione e l'indirizzo IPv4. La password digitata non viene accettata come argomento, stampata o salvata in file sul Mac; la stampante la memorizza nel proprio profilo per riconnettersi.
 
 Per preselezionare una rete visibile:
 
 ```sh
 python3 scripts/configure-wifi.py --ssid "Nome della rete"
 ```
+
+### Configurazione da file
+
+La modalità `--config` legge SSID e password da un file JSON locale, senza richiedere input interattivo. Anche questa modalità configura la stampante tramite USB, senza usare il suo pannello.
+
+In questo workspace è già presente `wifi-config.json`, con campi vuoti da compilare e permessi `600`. Il file e le varianti `wifi-config.*.json` sono esclusi da Git; viene versionato solo `wifi-config.example.json`, che contiene valori di esempio. Non inserire credenziali reali nel file di esempio.
+
+Formato del file:
+
+```json
+{
+  "ssid": "Nome_della_rete",
+  "password": "Password_della_rete"
+}
+```
+
+Su un nuovo checkout, dalla cartella del progetto, creare la propria copia:
+
+```sh
+cp wifi-config.example.json wifi-config.json
+chmod 600 wifi-config.json
+```
+
+Modificare `wifi-config.json` con nome e password esatti, poi verificare il file senza accedere alla stampante:
+
+```sh
+python3 scripts/configure-wifi.py --config wifi-config.json --dry-run
+```
+
+Per applicarlo, con la stampante accesa e collegata via USB:
+
+```sh
+python3 scripts/configure-wifi.py --config wifi-config.json
+```
+
+Il nome deve corrispondere a una sola rete visibile. Il tipo di sicurezza viene letto dalla stampante; se la rete è protetta ma la password è vuota, oppure la rete è aperta e il file contiene una password, il profilo non viene inviato. Per una rete aperta usare `"password": ""`.
+
+Il file viene validato prima di aprire il collegamento USB: JSON UTF-8, soli campi `ssid` e `password`, nessun campo duplicato, dimensione massima 8 KiB e nessun permesso per gruppo/altri utenti. Le credenziali non sono riportate nei messaggi, neppure in caso di errore. In questa modalità la password resta nel file JSON che hai compilato; lo script non ne crea altre copie. Se scegli un percorso diverso, assicurati che anche quel file sia escluso da Git.
+
+`--config` è alternativo a `--ssid` e non si combina con `--status` o `--list`. Senza `--config`, la procedura interattiva continua a funzionare come prima.
 
 Comandi senza modifica della configurazione:
 

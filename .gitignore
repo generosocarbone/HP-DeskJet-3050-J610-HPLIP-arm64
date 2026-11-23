@@ -8,3 +8,6 @@ __pycache__/
 scans/
 build-wifi/
 dist-wifi/
+/wifi-config.json
+/wifi-config.*.json
+!/wifi-config.example.json
